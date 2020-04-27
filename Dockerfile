@@ -219,5 +219,6 @@ RUN { echo '#!/bin/sh'; echo 'exec pkg-config "$@" freetype2'; } > /usr/local/bi
 ADD https://raw.githubusercontent.com/mlocati/docker-php-extension-installer/master/install-php-extensions /usr/local/bin/
 
 RUN chmod uga+x /usr/local/bin/install-php-extensions && sync && \
-    install-php-extensions redis mongodb mysqli swoole
+    install-php-extensions redis mongodb mysqli swoole \
+	amqp bcmath zip
 
