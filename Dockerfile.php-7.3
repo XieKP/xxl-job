@@ -33,9 +33,8 @@ ENV PHPIZE_DEPS \
 		make \
 		pkg-config \
 		re2c \
-                procps \
-                wget
-
+		procps \
+		wget
 
 # persistent / runtime deps
 RUN set -eux; \
@@ -70,11 +69,11 @@ ENV PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_
 ENV PHP_CPPFLAGS="$PHP_CFLAGS"
 ENV PHP_LDFLAGS="-Wl,-O1 -pie"
 
-ENV GPG_KEYS 42670A7FE4D0441C8E4632349E4FDC074A4EF02D 5A52880781F755608BF815FC910DEB46F53EA312
+ENV GPG_KEYS CBAF69F173A0FEA4B537F470D66C9593118BCCB6 F38252826ACD957EF380D39F2F7956BC5DA04B5D
 
-ENV PHP_VERSION 7.4.9
-ENV PHP_URL="https://www.php.net/distributions/php-7.4.9.tar.xz" PHP_ASC_URL="https://www.php.net/distributions/php-7.4.9.tar.xz.asc"
-ENV PHP_SHA256="23733f4a608ad1bebdcecf0138ebc5fd57cf20d6e0915f98a9444c3f747dc57b" PHP_MD5=""
+ENV PHP_VERSION 7.3.17
+ENV PHP_URL="https://www.php.net/get/php-7.3.17.tar.xz/from/this/mirror" PHP_ASC_URL="https://www.php.net/get/php-7.3.17.tar.xz.asc/from/this/mirror"
+ENV PHP_SHA256="6a30304c27f7e7a94538f5ffec599f600ee93aedbbecad8aa4f8bec539b10ad8" PHP_MD5=""
 
 RUN set -eux; \
 	\
@@ -120,7 +119,6 @@ RUN set -eux; \
 		libargon2-dev \
 		libcurl4-openssl-dev \
 		libedit-dev \
-		libonig-dev \
 		libsodium-dev \
 		libsqlite3-dev \
 		libssl-dev \
@@ -148,7 +146,7 @@ RUN set -eux; \
 		--with-config-file-path="$PHP_INI_DIR" \
 		--with-config-file-scan-dir="$PHP_INI_DIR/conf.d" \
 		\
-# make sure invalid --configure-flags are fatal errors instead of just warnings
+# make sure invalid --configure-flags are fatal errors intead of just warnings
 		--enable-option-checking=fatal \
 		\
 # https://github.com/docker-library/php/issues/439
@@ -172,9 +170,6 @@ RUN set -eux; \
 		--with-libedit \
 		--with-openssl \
 		--with-zlib \
-		\
-# in PHP 7.4+, the pecl/pear installers are officially deprecated (requiring an explicit "--with-pear") and will be removed in PHP 8+; see also https://github.com/docker-library/php/issues/846#issuecomment-505638494
-		--with-pear \
 		\
 # bundled pcre does not support JIT on s390x
 # https://manpages.debian.org/stretch/libpcre3-dev/pcrejit.3.en.html#AVAILABILITY_OF_JIT_SUPPORT
@@ -214,10 +209,13 @@ RUN set -eux; \
 # smoke test
 	php --version
 
-COPY docker-php-ext-* docker-php-entrypoint /usr/local/bin/
+COPY docker-php-ext-*  /usr/local/bin/
 
 # sodium was built as a shared module (so that it can be replaced later if so desired), so let's enable it too (https://github.com/docker-library/php/issues/598)
 RUN docker-php-ext-enable sodium
+
+# temporary "freetype-config" workaround for https://github.com/docker-library/php/issues/865 (https://bugs.php.net/bug.php?id=76324)
+RUN { echo '#!/bin/sh'; echo 'exec pkg-config "$@" freetype2'; } > /usr/local/bin/freetype-config && chmod +x /usr/local/bin/freetype-config
 
 ADD https://raw.githubusercontent.com/mlocati/docker-php-extension-installer/master/install-php-extensions /usr/local/bin/
 
@@ -251,7 +249,16 @@ RUN set -eux; \
    sysvmsg \
    sysvsem \
    sysvshm \
+   wddx \
    xmlrpc \
    xsl \
    zip  \
    gd
+
+#install php-swoole
+RUN set -eux; \
+    apt update; apt-get install  --no-install-recommends libssl-dev; \
+    printf "yes\nyes\nyes\nyes\n" | pecl install swoole; \
+    docker-php-ext-enable swoole; \
+    rm -rf /var/lib/apt/lists/* 
+
